@@ -1,23 +1,39 @@
-"use client"
+"use client";
 
-import { motion } from "framer-motion"
-import { Mail, MapPin, Phone } from "lucide-react"
-import { Button } from "./ui/button"
-import { Input } from "./ui/input"
-import { Textarea } from "./ui/textarea"
-import { useState } from "react"
+import { motion } from "framer-motion";
+import { Mail, MapPin, Phone } from "lucide-react";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
+import { useState, useRef, useEffect } from "react";
+import emailjs from "@emailjs/browser";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 export function Contact() {
+  const formRef = useRef<HTMLFormElement>(null);
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
+    user_name: "",
+    user_email: "",
     message: "",
-  })
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<{
-    type: "success" | "error" | null
-    message: string
-  }>({ type: null, message: "" })
+    type: "success" | "error" | null;
+    message: string;
+  }>({ type: null, message: "" });
+
+  const statusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+
+  useEffect(() => {
+    return () => {
+      if (statusTimeoutRef.current) {
+        clearTimeout(statusTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const contactInfo = [
     {
@@ -38,38 +54,59 @@ export function Contact() {
       value: "Kathmandu, Nepal",
       href: "https://maps.google.com/?q=Kathmandu,Nepal",
     },
-  ]
+  ];
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    setSubmitStatus({ type: null, message: "" })
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitStatus({ type: null, message: "" });
+
+
+    const serviceId = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!;
+    const templateId = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID!;
+    const publicKey = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY!;
 
     try {
-      // Here you would typically send the form data to your backend
-      // For now, we'll simulate a successful submission
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      setSubmitStatus({
-        type: "success",
-        message: "Thank you for your message! I'll get back to you soon.",
-      })
-      setFormData({ name: "", email: "", message: "" })
+      if (formRef.current) {
+        await emailjs.sendForm(
+          serviceId,
+          templateId,
+          formRef.current,
+          publicKey
+        );
+        
+        if (statusTimeoutRef.current) {
+          clearTimeout(statusTimeoutRef.current);
+        }
+        
+        setSubmitStatus({
+          type: "success",
+          message: "Thank you for your message! I'll get back to you soon.",
+        });
+        
+        statusTimeoutRef.current = setTimeout(() => {
+          setSubmitStatus({ type: null, message: "" });
+        }, 5000);
+        
+        setFormData({ user_name: "", user_email: "", message: "" });
+      }
     } catch (error) {
+      console.error("Email error:", error);
       setSubmitStatus({
         type: "error",
         message: "Something went wrong. Please try again later.",
-      })
+      });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
-  }
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   return (
     <section id="contact" className="py-20">
@@ -79,25 +116,40 @@ export function Contact() {
         transition={{ duration: 0.5 }}
         className="container mx-auto"
       >
-        <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">Contact Me</h2>
+        <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">
+          Contact Me
+        </h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Contact Information */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {contactInfo.map((info, index) => (
-              <motion.a
-                key={info.label}
-                href={info.href}
-                target={info.label === "Location" ? "_blank" : undefined}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="flex flex-col items-center p-6 bg-card rounded-lg hover:shadow-lg transition-shadow text-center"
-              >
-                <div className="text-primary mb-4">{info.icon}</div>
-                <h3 className="text-xl font-semibold mb-2">{info.label}</h3>
-                <p className="text-muted-foreground">{info.value}</p>
-              </motion.a>
-            ))}
+          <div className="flex flex-col justify-between">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {contactInfo.map((info, index) => (
+                <motion.a
+                  key={info.label}
+                  href={info.href}
+                  target={info.label === "Location" ? "_blank" : undefined}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  className="flex flex-col items-center p-6 bg-card rounded-lg hover:shadow-lg transition-shadow text-center"
+                >
+                  <div className="text-primary mb-4">{info.icon}</div>
+                  <h3 className="text-xl font-semibold mb-2">{info.label}</h3>
+                  <p className="text-muted-foreground">{info.value}</p>
+                </motion.a>
+              ))}
+            </div>
+            
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.5 }}
+              className="hidden md:block mt-8 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg p-8"
+            >
+              <p className="text-center text-muted-foreground italic">
+                I&apos;m always open to discussing new projects, creative ideas, or opportunities to be part of your vision.
+              </p>
+            </motion.div>
           </div>
 
           {/* Contact Form */}
@@ -108,13 +160,13 @@ export function Contact() {
             className="bg-card p-8 rounded-lg shadow-sm"
           >
             <h3 className="text-2xl font-semibold mb-6">Send Me a Message</h3>
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <Input
                   type="text"
-                  name="name"
+                  name="user_name"
                   placeholder="Your Name"
-                  value={formData.name}
+                  value={formData.user_name}
                   onChange={handleChange}
                   required
                   className="w-full"
@@ -123,9 +175,9 @@ export function Contact() {
               <div>
                 <Input
                   type="email"
-                  name="email"
+                  name="user_email"
                   placeholder="Your Email"
-                  value={formData.email}
+                  value={formData.user_email}
                   onChange={handleChange}
                   required
                   className="w-full"
@@ -152,11 +204,7 @@ export function Contact() {
                   {submitStatus.message}
                 </div>
               )}
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isSubmitting}
-              >
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
                 {isSubmitting ? "Sending..." : "Send Message"}
               </Button>
             </form>
@@ -164,5 +212,5 @@ export function Contact() {
         </div>
       </motion.div>
     </section>
-  )
+  );
 }
