@@ -28,4 +28,4 @@ A modern, responsive portfolio website built with React, TypeScript, and Tailwin
 ## Acknowledgments
 - Shadcn/ui for the beautiful UI components
 - Lucide for the icons
-- Tailwind CSS for the utility-first CSS framework
+- Tailwind CSS for the utility-first CSS framework.
